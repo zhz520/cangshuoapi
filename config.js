@@ -3,5 +3,7 @@ module.exports = {
     // 密钥
     jwtSecretKey: 'cangshuo(*^▽^*)',
     // token 过期时间
-    expiresIn: '100h'
+    expiresIn: '100h',
+    // 端口
+    port: 8089,
 }

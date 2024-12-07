@@ -55,6 +55,6 @@ app.use((err, req, res, next) => {
 	next()
 })
 
-app.listen(8089, () => {
-	console.log("http://localhost:8089");
+app.listen(config.port, () => {
+	console.log("服务器启动成功");
 })
