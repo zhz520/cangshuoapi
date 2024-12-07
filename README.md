@@ -65,6 +65,11 @@ node app.js
 2. 文章分类的增删改查
 3. 文章的增删改查
 
+## 开源协议
+
+[MIT] (https://github.com/zhz520/cangshuoapi/blob/main/LICENSE)
+本项目遵循 MIT 开源协议
+
 ## 联系方式
 
 1. 邮箱：14329140@qq.com
