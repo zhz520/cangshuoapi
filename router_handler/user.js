@@ -82,7 +82,7 @@ exports.sendEmailToAdmin = (req, res) => {
         if (results.length === 0) {
             db.query('insert into mail_record set ?', { ip: ip, last_sendmail_date: new Date() }, (err, results) => {
                 if (err) return res.cc(err)
-                sendMail()
+                sendMail(res, mailOptions)
             })
         }
         if (results.length > 0) {
@@ -98,7 +98,7 @@ exports.sendEmailToAdmin = (req, res) => {
             if (diff >= 1000 * 60 * 60 * 24) {
                 db.query('update mail_record set last_sendmail_date=? where ip=?', [new Date(), ip], (err, results) => {
                     if (err) return res.cc(err)
-                    sendMail()
+                    sendMail(res, mailOptions)
                 })
 
             }
@@ -106,7 +106,7 @@ exports.sendEmailToAdmin = (req, res) => {
     })
 }
 
-async function sendMail() {
+async function sendMail(res, mailOptions) {
     try {
         await trasnsport.sendMail(mailOptions)
         res.send({
