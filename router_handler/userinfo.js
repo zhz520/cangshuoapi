@@ -1,5 +1,20 @@
 const db = require('../db/db_config')
 const bcypt = require('bcryptjs')
+
+// 获取用户列表
+exports.getUserList = (req, res) => {
+    const sql = 'select id,username,nickname from ev_users'
+    db.query(sql, (err, results) => {
+        if (err) return res.send
+        if (results.length === 0) return res.send('获取用户列表失败')
+        res.send({
+            status: 0,
+            message: '获取用户列表成功',
+            data: results
+        })
+    })
+}
+
 // 获取用户信息
 exports.getUserInfo = (req, res) => {
     const sql = 'select id,username,nickname,email,user_pic from ev_users where id=?'

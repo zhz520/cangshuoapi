@@ -28,7 +28,8 @@ app.use(expressjwt.expressjwt({
 	secret: config.jwtSecretKey,
 	algorithms: ['HS256']
 }).unless({
-	path: [/^\/api\//]
+	// 排除/api和/my/userlist的接口
+	path: [/^\/api\/.*|\/my\/userlist/]
 }))
 
 // 用户注册登录模块

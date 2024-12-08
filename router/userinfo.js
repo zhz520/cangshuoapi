@@ -4,6 +4,9 @@ const expressjoi = require('@escook/express-joi')
 const { update_userinfo_schema, update_password_schema, update_avatar_schema } = require('../schems/user')
 const router = express.Router()
 
+// 获取用户列表
+router.get('/userlist', userinfo_handler.getUserList)
+
 // 获取用户信息
 router.get('/userinfo', userinfo_handler.getUserInfo)
 
