@@ -13,8 +13,13 @@ router.post('/register', expressJoi(reg_login_schema), user_handlers.regUser)
 router.post('/login', expressJoi(reg_login_schema), user_handlers.login)
 // 发送邮件给管理员
 router.post('/sendEmailToAdmin', expressJoi(send_email_schema), user_handlers.sendEmailToAdmin)
+
+
 // 获取王者英雄列表
 router.get('/getHeroList', user_handlers.getHeroList)
+
+// 蓝奏直链解析
+router.get('/getLanZouLink', user_handlers.getLanZouLink)
 
 
 module.exports = router

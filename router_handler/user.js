@@ -124,7 +124,7 @@ async function sendMail(res, mailOptions) {
 exports.getHeroList = async (req, res) => {
     try {
         const results = await axios.get('https://pvp.qq.com/web201605/js/herolist.json')
-        res.send({
+        res.send.status(200).send({
             status: 0,
             message: '获取英雄列表成功！',
             data: results.data
@@ -132,4 +132,105 @@ exports.getHeroList = async (req, res) => {
     } catch (error) {
         return res.cc(error)
     }
+}
+
+
+// 默认用户代理
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+
+// 随机IP函数
+function randomIP() {
+    const ip = []
+    for (let i = 0; i < 4; i++) {
+        ip.push(Math.floor(Math.random() * 256))
+    }
+    return ip.join('.')
+}
+
+// 蓝奏直链解析
+exports.getLanZouLink = async (req, res) => {
+    const { url } = req.query
+
+    if (!url) return res.cc('请输入正确的链接！')
+    const iframeSrc = await getLanZouIframeSrc(url)
+
+    async function getLanZouIframeSrc(url) {
+        try {
+            const results = await axios.get(url, {
+                headers: {
+                    'User-Agent': USER_AGENT,
+                    'X-Forwarded-For': randomIP()
+                },
+                https: {
+                    rejectUnauthorized: false
+                }
+            })
+            const iframeSrc = results.data.match(/<iframe.*?src="(.*?)"/)[1]
+            return iframeSrc
+            // return iframeSrc
+        } catch (error) {
+            return res.cc(error)
+        }
+    }
+
+
+    let urlObj = ''
+    urlObj = await getLanZouP(url, iframeSrc)
+    async function getLanZouP(url, iframeSrc) {
+        const pUrl = url + iframeSrc
+        try {
+            const results = await axios.get(pUrl, {
+                headers: {
+                    'User-Agent': USER_AGENT,
+                    'X-Forwarded-For': randomIP()
+                },
+                https: {
+                    rejectUnauthorized: false
+                }
+            })
+            signMatch = results.data.match(/sign':'(.*?)'/)[1]
+            const urlP = results.data.match(/url\s*:\s*'(\/ajaxm\.php\?file=\d+)'/)[1];
+            return {
+                signMatch: signMatch,
+                urlP: urlP,
+                pUrl: pUrl
+            }
+        } catch (error) {
+            return res.cc(error)
+        }
+    }
+
+
+    await getLanZouLink(url, urlObj)
+    async function getLanZouLink(url, urlObj) {
+        const { signMatch, urlP, pUrl } = urlObj
+        const urlPFull = 'https://www.lanzouw.com' + urlP
+        try {
+            const results = await axios.post(urlPFull, {
+                sign: signMatch,
+                action: 'downprocess',
+                signs: '?ctdf',
+            }, {
+                headers: {
+                    'User-Agent': USER_AGENT,
+                    'X-Forwarded-For': randomIP(),
+                    'Referer': pUrl,
+                    'Content-Type': 'multipart/form-data'
+                },
+                https: {
+                    rejectUnauthorized: false
+                }
+            })
+            const urlLink = results.data.dom + "/file/" + results.data.url
+            res.send({
+                status: 0,
+                message: '获取蓝奏直链成功！',
+                data: urlLink
+            })
+        } catch (error) {
+            return res.cc(error)
+        }
+    }
+
+
 }
