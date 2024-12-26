@@ -149,7 +149,7 @@ function randomIP() {
 
 // 蓝奏直链解析
 exports.getLanZouLink = async (req, res) => {
-    const { url } = req.query;
+    const { url, type } = req.query;
 
     if (!url) return res.cc('请输入正确的链接！');
 
@@ -160,7 +160,7 @@ exports.getLanZouLink = async (req, res) => {
         const urlObj = await getLanZouP(url, iframeSrc);
         if (!urlObj) return res.status(400).json({ status: 1, message: '解析失败！' });
 
-        await getLanZouLink(url, urlObj, res);
+        await getLanZouLink(url, urlObj, res, type);
     } catch (error) {
         return res.cc(error);
     }
@@ -194,7 +194,7 @@ async function getLanZouP(url, iframeSrc) {
     }
 }
 
-async function getLanZouLink(url, urlObj, res) {
+async function getLanZouLink(url, urlObj, res, type) {
     const { signMatch, urlP, pUrl } = urlObj;
     const urlPFull = 'https://www.lanzouw.com' + urlP;
     try {
@@ -212,7 +212,15 @@ async function getLanZouLink(url, urlObj, res) {
             https: { rejectUnauthorized: false }
         });
         const urlLink = results.data.dom + "/file/" + results.data.url;
-        res.status(200).json({ status: 0, message: '解析成功！', data: { urlLink } });
+
+        if (type === "json" || type === "JSON" || type === null || !type) {
+            res.status(200).json(
+                { status: 0, message: '解析成功！', data: { urlLink } }
+            );
+        }
+        if (type === "down") {
+            res.redirect(302, urlLink)
+        }
     } catch (error) {
         throw error;
     }
