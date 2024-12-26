@@ -150,9 +150,7 @@ function randomIP() {
 // 蓝奏直链解析
 exports.getLanZouLink = async (req, res) => {
     const { url, type } = req.query;
-
     if (!url) return res.cc('请输入正确的链接！');
-
     try {
         const iframeSrc = await getLanZouIframeSrc(url);
         if (!iframeSrc) return res.status(400).json({ status: 1, message: '解析失败！' });
@@ -214,13 +212,14 @@ async function getLanZouLink(url, urlObj, res, type) {
         const urlLink = results.data.dom + "/file/" + results.data.url;
 
         if (type === "json" || type === "JSON" || type === null || !type) {
-            res.status(200).json(
+            return res.status(200).json(
                 { status: 0, message: '解析成功！', data: { urlLink } }
             );
         }
         if (type === "down") {
-            res.redirect(302, urlLink)
+            return res.redirect(302, urlLink)
         }
+        return res.status(400).json({ status: 1, message: '检查参数！' });
     } catch (error) {
         throw error;
     }
