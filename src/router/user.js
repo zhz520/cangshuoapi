@@ -21,5 +21,8 @@ router.get('/getHeroList', user_handlers.getHeroList)
 // 蓝奏直链解析
 router.get('/getLanZouLink', user_handlers.getLanZouLink)
 
+// 快手视频解析
+router.get('/getKuaishouLink', user_handlers.getKuaishouLink)
+
 
 module.exports = router

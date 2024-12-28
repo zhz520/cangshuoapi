@@ -150,7 +150,9 @@ function randomIP() {
 // 蓝奏直链解析
 exports.getLanZouLink = async (req, res) => {
     const { url, type } = req.query;
+
     if (!url) return res.cc('请输入正确的链接！');
+
     try {
         const iframeSrc = await getLanZouIframeSrc(url);
         if (!iframeSrc) return res.status(400).json({ status: 1, message: '解析失败！' });
@@ -212,17 +214,74 @@ async function getLanZouLink(url, urlObj, res, type) {
         const urlLink = results.data.dom + "/file/" + results.data.url;
 
         if (type === "json" || type === "JSON" || type === null || !type) {
-            return res.status(200).json(
+            res.status(200).json(
                 { status: 0, message: '解析成功！', data: { urlLink } }
             );
         }
         if (type === "down") {
-            return res.redirect(302, urlLink)
+            res.redirect(302, urlLink)
         }
-        return res.status(400).json({ status: 1, message: '检查参数！' });
     } catch (error) {
         throw error;
     }
 
 
+}
+
+exports.getKuaishouLink = async (req, res) => {
+    const { url } = req.query;
+    if (!url) return res.cc('请输入正确的链接！');
+    try {
+        const chenzhongtech = await fetch(url, {
+            "headers": {
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "accept-language": "zh-CN,zh;q=0.9",
+                "sec-ch-ua": "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Windows\"",
+                "sec-fetch-dest": "document",
+                "sec-fetch-mode": "navigate",
+                "sec-fetch-site": "none",
+                "sec-fetch-user": "?1",
+                "upgrade-insecure-requests": "1",
+                "cookie": "did=web_ea76bf3236b25f13d38c84353a19e2e3; didv=1735392497000"
+            },
+            "referrerPolicy": "strict-origin-when-cross-origin",
+            "body": null,
+            "method": "GET"
+        })
+        const chenzongtechHtml = await chenzhongtech.text();
+
+        let substring = "representation"
+        let index = chenzongtechHtml.indexOf(substring);
+        if (index !== -1) {
+            let result = chenzongtechHtml.substring(index + substring.length + 2, chenzongtechHtml.length - 2);
+
+            let regex = /"backupUrl":\["([^"]+)"\]/g;
+            let matches;
+            let results = [];
+            while ((matches = regex.exec(result)) !== null) {
+                results.push(matches[1]);
+            }
+            if (url.startsWith("https://www")) {
+                const urlLink = results[1].replace(/\\/g, "").replace(/u002F/g, "/")
+                res.status(200).json(
+                    { status: 0, message: '解析成功！', data: { urlLink } }
+                )
+            } else if (url.startsWith("https://v")) {
+                const urlLink = results[0].replace(/\\/g, "").replace(/u002F/g, "/")
+                res.status(200).json(
+                    { status: 0, message: '解析成功！', data: { urlLink } }
+                )
+            } else {
+                // 无效url
+                res.status(200).json(
+                    { status: 0, message: '解析失败！', data: { urlLink: "无效链接" } }
+                )
+            }
+
+        }
+    } catch (error) {
+        throw error;
+    }
 }
