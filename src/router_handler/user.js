@@ -147,23 +147,110 @@ function randomIP() {
 
 // 蓝奏直链解析
 exports.getLanZouLink = async (req, res) => {
-    const { url, type } = req.query;
+    const { url, type, pwd } = req.query;
 
     if (!url) return res.cc('请输入正确的链接！');
 
-    try {
-        const iframeSrc = await getLanZouIframeSrc(url);
-        if (!iframeSrc) return res.status(400).json({ status: 1, message: '解析失败！' });
 
-        const urlObj = await getLanZouP(url, iframeSrc);
+    if (!pwd || pwd == null) {
+        try {
+            const iframeSrc = await getLanZouIframeSrc(url);
+            if (!iframeSrc) return res.status(400).json({ status: 1, message: '解析失败！' });
+
+            const urlObj = await getLanZouP(url, iframeSrc);
+            if (!urlObj) return res.status(400).json({ status: 1, message: '解析失败！' });
+
+            await getLanZouLink(url, urlObj, res, type);
+        } catch (error) {
+            return res.cc(error);
+        }
+    }
+    if (pwd) {
+        const urlObj = await getHasPwdLanZouP(url, pwd, res, type);
         if (!urlObj) return res.status(400).json({ status: 1, message: '解析失败！' });
-
-        await getLanZouLink(url, urlObj, res, type);
-    } catch (error) {
-        return res.cc(error);
+        await getHasPwdLanZouLink(url, urlObj, res, type, pwd);
     }
 };
 
+// 有密码
+async function getHasPwdLanZouP(url) {
+    const config = {
+        headers: { 'User-Agent': USER_AGENT, 'X-Forwarded-For': randomIP() },
+        https: { rejectUnauthorized: false }  // 忽略SSL证书验证
+    };
+    try {
+        const results = await axios.get(url, config);
+        const signMatch = results.data.match(/skdklds = '(.*?)'/)[1]
+        const urlp = results.data.match(/url\s*:\s*'(\/ajaxm\.php\?file=\d+)'/)[1]
+        return signMatch && urlp ? { signMatch, urlp } : null;
+    } catch (error) {
+        throw error;
+    }
+}
+async function getHasPwdLanZouLink(url, urlObj, res, type, pwd) {
+    const { signMatch, urlp } = urlObj;
+    const urlpFull = 'https://www.lanzouw.com' + urlp;
+    try {
+        const results = await axios({
+            method: 'post',
+            url: urlpFull,
+            data: {
+                sign: signMatch,
+                action: 'downprocess',
+                p: pwd,
+                kd: 1
+            },
+            headers: {
+                'User-Agent': USER_AGENT,
+                'X-Forwarded-For': randomIP(),
+                'Referer': url,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            https: { rejectUnauthorized: false }
+        })
+        const data = results.data;
+        const resUrl = data.dom + '/file/' + data.url
+        if (type === "JSON" || type === "json" || type === null || !type) {
+            if (data.zt === 0) {
+                res.status(200).json({
+                    status: 1,
+                    message: data.inf,
+                })
+            }
+            if (data.zt === 1) {
+                res.status(200).json({
+                    status: 0,
+                    message: '解析成功！',
+                    data: {
+                        url: resUrl,
+                        filename: data.inf
+                    }
+                })
+            }
+        } else if (type === "down") {
+            if (data.zt === 0) {
+                res.status(200).json({
+                    status: 1,
+                    message: data.inf,
+                })
+            }
+            if (data.zt === 1) {
+                res.redirect(302, resUrl)
+            }
+        } else {
+            res.status(400).json({
+                status: 1,
+                message: '检查参数！'
+            })
+        }
+
+    } catch (error) {
+        throw error;
+    }
+
+}
+
+// 无密码
 async function getLanZouIframeSrc(url) {
     const config = {
         headers: { 'User-Agent': USER_AGENT, 'X-Forwarded-For': randomIP() },
