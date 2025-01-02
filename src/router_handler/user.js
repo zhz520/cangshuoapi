@@ -166,9 +166,13 @@ exports.getLanZouLink = async (req, res) => {
         }
     }
     if (pwd) {
-        const urlObj = await getHasPwdLanZouP(url, pwd, res, type);
-        if (!urlObj) return res.status(400).json({ status: 1, message: '解析失败！' });
-        await getHasPwdLanZouLink(url, urlObj, res, type, pwd);
+        try {
+            const urlObj = await getHasPwdLanZouP(url, pwd, res, type);
+            if (!urlObj) return res.status(400).json({ status: 1, message: '解析失败！' });
+            await getHasPwdLanZouLink(url, urlObj, res, type, pwd);
+        } catch (error) {
+            return res.cc(error);
+        }
     }
 };
 
@@ -369,6 +373,12 @@ async function getKuaishouLinks(urlPFull, type, url, res) {
         });
         const chenzongtechHtml = response.data;
 
+        const author = chenzongtechHtml.match(/"artist"\s*:\s*"([^"]+)"/)[1]
+        const imageUrlq = `${chenzongtechHtml.match(/"coverUrls"\s*:\s*\[([^\]]+)\]/)[1]}`.split(",")[1]
+        const imageUrls = JSON.parse(`{${imageUrlq}`).url
+        const caption = chenzongtechHtml.match(/"caption"\s*:\s*"([^"]+)"/)[1]
+
+
         let substring = "representation";
         let index = chenzongtechHtml.indexOf(substring);
         if (index !== -1) {
@@ -382,10 +392,11 @@ async function getKuaishouLinks(urlPFull, type, url, res) {
             }
 
             const urlLink = handleUrl(backupUrls, url);
+
             if (!urlLink) return res.status(200).json({ status: 0, message: '解析失败！', data: { urlLink: "无效链接" } });
 
             if (type === "json" || type === "JSON" || type === null || !type) {
-                res.status(200).json({ status: 0, message: '解析成功！', data: { urlLink } });
+                res.status(200).json({ status: 0, message: '解析成功！', data: { urlLink, author, imageUrls, caption } });
             } else if (type === "down") {
                 res.redirect(302, urlLink);
             } else {
@@ -408,3 +419,141 @@ function handleUrl(results, url) {
     }
     return null;
 }
+
+// 抖音开始
+
+// 提取URL的正则表达式
+function extractUrls(html) {
+    const regex = /"play_addr"\s*:\s*\{\s*"uri"\s*:\s*"([^"]+)"\s*,\s*"url_list"\s*:\s*\[\s*"([^"]+)"(?:\s*,\s*"([^"]+)")?\s*\]\s*\}/;
+    const match = html.match(regex);
+    if (!match) {
+        throw new Error('无法解析 play_addr');
+    }
+    return match[2].replace(/\\/g, "").replace(/u002F/g, "/").replace("playwm", "play");
+}
+
+// 提取作者昵称
+function extractAuthor(html) {
+    const regex = /"nickname"\s*:\s*"([^"]+)"/;
+    const match = html.match(regex);
+    if (!match) {
+        throw new Error('无法解析 nickname');
+    }
+    return match[1];
+}
+
+// 提取视频描述
+function extractDesc(html) {
+    const regex = /"desc"\s*:\s*"([^"]+)"/;
+    const match = html.match(regex);
+    if (!match) {
+        throw new Error('无法解析 desc');
+    }
+    return match[1];
+}
+
+// 提取封面图片URL
+function extractImgUrl(html) {
+    const coverRegex = /"cover"\s*:\s*\{[^}]*\}/g;
+    const urlRegex = /"url_list"\s*:\s*\[\s*"([^"]+)"/;
+    const coverMatch = html.match(coverRegex);
+    if (!coverMatch) {
+        throw new Error('无法解析 cover');
+    }
+    const urlMatch = coverMatch[0].match(urlRegex);
+    if (!urlMatch) {
+        throw new Error('无法解析 cover url_list');
+    }
+    return urlMatch[1].replace(/\\/g, "").replace(/u002F/g, "/");
+}
+
+// 获取抖音链接
+exports.getDouyinLink = async (req, res) => {
+    const { url, type } = req.query;
+
+    async function getDouyinLinks(url) {
+        try {
+            const response = await axios.get(url, {
+                headers: {
+                    "x-forwarded-for": randomIP(),
+                    "User-Agent": "Mozilla/5.0 (iphone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
+                    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                    "Accept-Language": "zh-CN,zh;q=0.9",
+                },
+                httpsAgent: new https.Agent({ rejectUnauthorized: false })
+            });
+            return response.data;
+        } catch (error) {
+            console.error(`Error in getDouyinFinalLink: ${error.message}`);
+            throw error;
+        }
+    }
+
+    try {
+        const html = await getDouyinLinks(url);
+        const videoUrl = extractUrls(html);
+        const author = extractAuthor(html);
+        const desc = extractDesc(html);
+        const imgUrl = extractImgUrl(html);
+
+        if (type === "json" || type === "JSON" || type === null || !type) {
+            res.status(200).json({ status: 0, message: '解析成功！', data: { urlLink: videoUrl, author, desc, imgUrl } });
+        } else if (type === "down") {
+            res.redirect(302, videoUrl);
+        } else {
+            res.status(400).json({ status: 1, message: '检查参数！' });
+        }
+    } catch (error) {
+        console.error(`Error in getDouyinLink: ${error.message}`);
+        res.status(500).json({ status: 1, message: '解析失败！', error: error.message });
+    }
+}
+// 抖音结束
+
+// 获取QQ小世界作者QQ号
+exports.getQQAuthor = async (req, res) => {
+    const { url, encrypt, schema } = req.query;
+
+    // 验证输入参数
+    if (!url) {
+        return res.status(400).json({ status: 1, message: '请输入QQ小世界链接！' });
+    }
+
+    const rurl = `${url}&encrypt=${encrypt || ''}&schema=${schema || ''}`;
+    try {
+        let response = await axios.get(rurl, {
+            headers: {
+                "x-forwarded-for": randomIP(),
+                "User-Agent": "Mozilla/5.0 (iphone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
+                Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "Accept-Language": "zh-CN,zh;q=0.9",
+            },
+            httpsAgent: new https.Agent({ rejectUnauthorized: false })
+        });
+
+
+        let match = response.data.match(/xsj_author_uin=(\d+)/);
+        if (!match) {
+            response = await axios.get(url, {
+                headers: {
+                    "x-forwarded-for": randomIP(),
+                    "User-Agent": "Mozilla/5.0 (iphone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
+                    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                    "Accept-Language": "zh-CN,zh;q=0.9",
+                },
+                httpsAgent: new https.Agent({ rejectUnauthorized: false })
+            });
+
+            match = response.data.match(/xsj_author_uin=(\d+)/);
+            if (!match) {
+                return res.status(400).json({ status: 1, message: '未找到作者QQ号！' });
+            }
+        }
+
+        const authorQQ = match[1];
+        res.status(200).json({ status: 0, message: '解析成功！', data: { author: authorQQ } });
+    } catch (error) {
+        console.error(`Error in getQQAuthor: ${error.message}`);
+        res.status(500).json({ status: 1, message: '解析失败！', error: error.message });
+    }
+};

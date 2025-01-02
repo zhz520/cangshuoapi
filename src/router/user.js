@@ -24,5 +24,10 @@ router.get('/getLanZouLink', user_handlers.getLanZouLink)
 // 快手视频解析
 router.get('/getKuaishouLink', user_handlers.getKuaishouLink)
 
+// 抖音视频解析
+router.get('/getDouyinLink', user_handlers.getDouyinLink)
+
+// 获取QQ小世界作者QQ号
+router.get('/getQQAuthor', user_handlers.getQQAuthor)
 
 module.exports = router
