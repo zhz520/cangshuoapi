@@ -30,4 +30,7 @@ router.get('/getDouyinLink', user_handlers.getDouyinLink)
 // 获取QQ小世界作者QQ号
 router.get('/getQQAuthor', user_handlers.getQQAuthor)
 
+// 三要素
+router.get('/getThreeElements', user_handlers.getThreeElements)
+
 module.exports = router
